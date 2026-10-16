@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Homey hDashboard Gallery</title>
+<script>
+/* ===========================================================
+   CONFIGURATION — EDIT ONLY THIS SECTION
+   =========================================================== */
+const CONFIG = {
+  images: [
+    { url: 'https://picsum.photos/seed/homey1/1200/800', caption: 'Billede 1' },
+    { url: 'https://picsum.photos/seed/homey2/1200/800', caption: 'Billede 2' },
+    { url: 'https://picsum.photos/seed/homey3/1200/800', caption: 'Billede 3' },
+    { url: 'https://picsum.photos/seed/homey4/1200/800', caption: 'Billede 4' },
+    { url: 'https://picsum.photos/seed/homey5/1200/800', caption: 'Billede 5' }
+  ],
+  layout: 'slideshow',    // 'slideshow' (full image) or 'carousel3d'
+  imageFit: 'cover',      // 'cover' (crop) or 'contain' (show full image)
+  intervalSeconds: 5,    // 0 = disable automatic rotation
+  transitionMs: 700,     // milliseconds
+  autoplay: true,
+  pauseWhenHidden: true, // save CPU when the widget is hidden
+  showArrows: true,
+  showDots: true,
+  showCounter: false,
+  showCaptions: false,
+  showPauseButton: false,
+  enableSwipe: true,
+  background: '#141922', // 'transparent' also works
+  textColor: '#ffffff',
+  accentColor: '#ffffff',
+  borderRadiusPx: 14,
+  imageWidthPercent: 38, // only carousel3d, 20–70 recommended
+  imageHeightPercent: 66,// only carousel3d, 20–95 recommended
+  perspectivePx: 1100,   // only carousel3d
+  controlsBottomPx: 12,
+  imagePosition: 'center center', // useful with imageFit 'cover'
+  debug: false
+};
+/* ==================== END CONFIGURATION ==================== */
+</script>
+<style>
+  * { box-sizing: border-box; }
+  html,body { margin:0; width:100%; height:100%; overflow:hidden; }
+  body { background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,sans-serif; }
+  .gallery { position:relative; width:100%; height:100%; overflow:hidden; touch-action:pan-y; user-select:none; }
+  .slides { position:absolute; inset:0; }
+  .slide { position:absolute; inset:0; opacity:0; transition:opacity var(--duration) ease; pointer-events:none; }
+  .slide.active { opacity:1; }
+  .slide img { display:block; width:100%;height:100%;object-fit:var(--fit);object-position:var(--position);border-radius:var(--radius); }
+  .carousel-space { display:none; position:absolute; inset:0; perspective:var(--perspective); place-items:center; }
+  .ring { position:relative; width:var(--card-width);height:var(--card-height);transform-style:preserve-3d;transition:transform var(--duration) cubic-bezier(.2,.7,.2,1); }
+  .panel { position:absolute;inset:0;margin:0;overflow:hidden;border-radius:var(--radius);backface-visibility:hidden;background:#333;box-shadow:0 12px 28px #0007; }
+  .panel img { width:100%;height:100%;display:block;object-fit:var(--fit);object-position:var(--position); }
+  body.mode-3d .slides { display:none; }
+  body.mode-3d .carousel-space { display:grid; }
+  .controls { position:absolute; z-index:5; left:50%;bottom:var(--controls-bottom);transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:5px 9px;background:#0008;border-radius:999px;max-width:calc(100% - 12px); }
+  button { background:#ffffff22;color:var(--text);border:0;border-radius:50%;width:32px;height:32px;flex:0 0 auto;font-size:21px;cursor:pointer; }
+  button:focus-visible { outline:2px solid var(--accent);outline-offset:2px; }
+  .dots { display:flex;gap:6px;align-items:center;max-width:100%;overflow-x:auto;scrollbar-width:none; }
+  .dot { width:7px;height:7px;min-width:7px;background:#ffffff66;padding:0; }
+  .dot.selected { background:var(--accent); }
+  .counter { font-size:12px;white-space:nowrap; }
+  .caption { position:absolute;left:12px;right:12px;bottom:calc(var(--controls-bottom) + 52px);z-index:4;font-size:13px;text-align:center;text-shadow:0 1px 5px #000;pointer-events:none; }
+  .empty { position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px; }
+  [hidden] { display:none!important; }
+</style>
+</head>
+<body>
+<div class="gallery" id="gallery" aria-label="Billedgalleri">
+  <div class="slides" id="slides"></div>
+  <div class="carousel-space"><div class="ring" id="ring"></div></div>
+  <div class="caption" id="caption"></div>
+  <div class="controls" id="controls">
+    <button id="prev" aria-label="Forrige billede">&#8249;</button>
+    <div class="dots" id="dots"></div>
+    <span class="counter" id="counter"></span>
+    <button id="pause" aria-label="Pause eller afspil">&#10074;&#10074;</button>
+    <button id="next" aria-label="Næste billede">&#8250;</button>
+  </div>
+</div>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const images = CONFIG.images.filter(item => typeof item === 'string' ? item.length > 0 : item && item.url);
+  const getURL = item => typeof item === 'string' ? item : item.url;
+  const getCaption = item => typeof item === 'string' ? '' : (item.caption || '');
+  const count = images.length;
+  const mode3d = CONFIG.layout === 'carousel3d' && count >= 3;
+  const gallery = $('gallery'), ring = $('ring');
+  let index = 0, timer, playing = !!CONFIG.autoplay, pointerX = null;
+  const root = document.documentElement.style;
+  const set = (k,v) => root.setProperty(k,v);
+  set('--bg', CONFIG.background); set('--text', CONFIG.textColor);
+  set('--accent', CONFIG.accentColor); set('--fit', CONFIG.imageFit);
+  set('--position', CONFIG.imagePosition);
+  set('--duration',Math.max(0,CONFIG.transitionMs)+'ms');
+  set('--radius',CONFIG.borderRadiusPx+'px');
+  set('--perspective',CONFIG.perspectivePx+'px');
+  set('--controls-bottom',CONFIG.controlsBottomPx+'px');
+  set('--card-width',CONFIG.imageWidthPercent+'%');
+  set('--card-height',CONFIG.imageHeightPercent+'%');
+  if (mode3d) document.body.classList.add('mode-3d');
+
+  if (!count) {
+    $('controls').hidden = true;
+    const empty = document.createElement('div');
+    empty.className='empty'; empty.textContent='Tilføj billedadresser i CONFIG.images';
+    gallery.appendChild(empty);
+    return;
+  }
+  const slides=[], dots=[];
+  images.forEach((item,i) => {
+    const img = document.createElement('img');
+    img.src = getURL(item); img.alt = getCaption(item) || `Billede ${i+1}`;
+    img.loading = i < 2 ? 'eager':'lazy'; img.draggable=false;
+    if (mode3d) {
+      const panel = document.createElement('figure'); panel.className='panel';
+      panel.appendChild(img); ring.appendChild(panel);
+    } else {
+      const slide = document.createElement('div'); slide.className='slide';
+      slide.appendChild(img); $('slides').appendChild(slide); slides.push(slide);
+    }
+    const dot=document.createElement('button');dot.className='dot';
+    dot.setAttribute('aria-label',`Vis billede ${i+1}`);
+    dot.onclick=()=>{index=i;update();resetTimer();};
+    $('dots').appendChild(dot); dots.push(dot);
+  });
+  $('prev').hidden=!CONFIG.showArrows || count<2;
+  $('next').hidden=!CONFIG.showArrows || count<2;
+  $('dots').hidden=!CONFIG.showDots || count<2;
+  $('counter').hidden=!CONFIG.showCounter;
+  $('caption').hidden=!CONFIG.showCaptions;
+  $('pause').hidden=!CONFIG.showPauseButton || CONFIG.intervalSeconds<=0 || count<2;
+  $('controls').hidden=!CONFIG.showArrows && !CONFIG.showDots && !CONFIG.showCounter && !CONFIG.showPauseButton;
+  const pauseLabel=()=>{
+    $('pause').textContent=playing?'Ⅱ':'▶';
+    $('pause').setAttribute('aria-label',playing?'Pause':'Afspil');
+  };
+  function layout3d() {
+    if (!mode3d) return;
+    const width=ring.getBoundingClientRect().width;
+    const radius=Math.round(width/(2*Math.tan(Math.PI/count)))+12;
+    [...ring.children].forEach((panel,i)=>{
+      panel.style.transform=`rotateY(${i*360/count}deg) translateZ(${radius}px)`;
+    });
+    update();
+  }
+  function update() {
+    const i=((index%count)+count)%count;
+    slides.forEach((el,n)=>el.classList.toggle('active',i===n));
+    dots.forEach((el,n)=>el.classList.toggle('selected',i===n));
+    if(mode3d)ring.style.transform=`rotateY(${-index*360/count}deg)`;
+    $('counter').textContent=`${i+1} / ${count}`;
+    $('caption').textContent=getCaption(images[i]);
+  }
+  function canPlay() {return playing && count>1 && CONFIG.intervalSeconds>0 && (!CONFIG.pauseWhenHidden || !document.hidden);}
+  function resetTimer() {
+    clearInterval(timer);
+    if(canPlay()) timer=setInterval(()=>{index++;update();},CONFIG.intervalSeconds*1000);
+  }
+  function move(direction) {index+=direction;update();resetTimer();}
+  $('prev').onclick=()=>move(-1);
+  $('next').onclick=()=>move(1);
+  $('pause').onclick=()=>{playing=!playing;pauseLabel();resetTimer();};
+  if (CONFIG.enableSwipe) {
+    gallery.addEventListener('pointerdown',e=>{pointerX=e.clientX;});
+    gallery.addEventListener('pointerup',e=>{
+      if(pointerX!==null && Math.abs(e.clientX-pointerX)>35)move(e.clientX<pointerX?1:-1);
+      pointerX=null;
+    });
+    gallery.addEventListener('pointercancel',()=>{pointerX=null;});
+  }
+  document.addEventListener('visibilitychange',resetTimer);
+  window.addEventListener('resize',layout3d);
+  pauseLabel(); update();layout3d();resetTimer();
+  if(CONFIG.debug)console.info('Homey gallery', {count,mode3d,CONFIG});
+})();
+</script>
+</body>
+</html>
