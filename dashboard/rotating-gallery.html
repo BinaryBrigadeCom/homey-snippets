@@ -28,6 +28,8 @@ const CONFIG = {
   showCaptions: false,
   showPauseButton: false,
   enableSwipe: true,
+  enableLightbox: true,       // click the current image to enlarge it
+  lightboxFullscreen: true,   // try screen fullscreen; fall back to widget size
   background: '#141922', // 'transparent' also works
   textColor: '#ffffff',
   accentColor: '#ffffff',
@@ -48,7 +50,7 @@ const CONFIG = {
   .gallery { position:relative; width:100%; height:100%; overflow:hidden; touch-action:pan-y; user-select:none; }
   .slides { position:absolute; inset:0; }
   .slide { position:absolute; inset:0; opacity:0; transition:opacity var(--duration) ease; pointer-events:none; }
-  .slide.active { opacity:1; }
+  .slide.active { opacity:1; pointer-events:auto; }
   .slide img { display:block; width:100%;height:100%;object-fit:var(--fit);object-position:var(--position);border-radius:var(--radius); }
   .carousel-space { display:none; position:absolute; inset:0; perspective:var(--perspective); place-items:center; }
   .ring { position:relative; width:var(--card-width);height:var(--card-height);transform-style:preserve-3d;transition:transform var(--duration) cubic-bezier(.2,.7,.2,1); }
@@ -65,6 +67,9 @@ const CONFIG = {
   .counter { font-size:12px;white-space:nowrap; }
   .caption { position:absolute;left:12px;right:12px;bottom:calc(var(--controls-bottom) + 52px);z-index:4;font-size:13px;text-align:center;text-shadow:0 1px 5px #000;pointer-events:none; }
   .empty { position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px; }
+  .lightbox { position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:#000e;cursor:zoom-out; }
+  .lightbox img { display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain; }
+  .lightbox:focus-visible { outline:2px solid var(--accent);outline-offset:-4px; }
   [hidden] { display:none!important; }
 </style>
 </head>
@@ -81,6 +86,9 @@ const CONFIG = {
     <button id="next" aria-label="Næste billede">&#8250;</button>
   </div>
 </div>
+<div class="lightbox" id="lightbox" role="button" tabindex="0" aria-label="Luk stort billede" hidden>
+  <img id="lightboxImage" alt="">
+</div>
 <script>
 (() => {
   'use strict';
@@ -91,7 +99,8 @@ const CONFIG = {
   const count = images.length;
   const mode3d = CONFIG.layout === 'carousel3d' && count >= 3;
   const gallery = $('gallery'), ring = $('ring');
-  let index = 0, timer, playing = !!CONFIG.autoplay, pointerX = null;
+  let index = 0, timer, playing = !!CONFIG.autoplay, pointerX = null, lightboxOpen = false;
+  const lightbox = $('lightbox'), lightboxImage = $('lightboxImage');
   const root = document.documentElement.style;
   const set = (k,v) => root.setProperty(k,v);
   set('--bg', CONFIG.background); set('--text', CONFIG.textColor);
@@ -119,9 +128,11 @@ const CONFIG = {
     img.loading = i < 2 ? 'eager':'lazy'; img.draggable=false;
     if (mode3d) {
       const panel = document.createElement('figure'); panel.className='panel';
+      img.addEventListener('click', () => { if (i === ((index%count)+count)%count) openLightbox(img); });
       panel.appendChild(img); ring.appendChild(panel);
     } else {
       const slide = document.createElement('div'); slide.className='slide';
+      img.addEventListener('click', () => openLightbox(img));
       slide.appendChild(img); $('slides').appendChild(slide); slides.push(slide);
     }
     const dot=document.createElement('button');dot.className='dot';
@@ -157,12 +168,38 @@ const CONFIG = {
     $('counter').textContent=`${i+1} / ${count}`;
     $('caption').textContent=getCaption(images[i]);
   }
-  function canPlay() {return playing && count>1 && CONFIG.intervalSeconds>0 && (!CONFIG.pauseWhenHidden || !document.hidden);}
+  function canPlay() {return playing && !lightboxOpen && count>1 && CONFIG.intervalSeconds>0 && (!CONFIG.pauseWhenHidden || !document.hidden);}
   function resetTimer() {
     clearInterval(timer);
     if(canPlay()) timer=setInterval(()=>{index++;update();},CONFIG.intervalSeconds*1000);
   }
   function move(direction) {index+=direction;update();resetTimer();}
+  function openLightbox(img) {
+    if (!CONFIG.enableLightbox || lightboxOpen || !img.naturalWidth) return;
+    const box = img.getBoundingClientRect();
+    const cropped = CONFIG.imageFit === 'cover' && Math.abs(img.naturalWidth / img.naturalHeight - box.width / box.height) > 0.01;
+    if (!cropped && box.width >= Math.min(img.naturalWidth, window.screen.width) && box.height >= Math.min(img.naturalHeight, window.screen.height)) return;
+    lightboxImage.src = img.currentSrc || img.src;
+    lightboxImage.alt = img.alt;
+    lightbox.hidden = false;
+    lightboxOpen = true;
+    resetTimer();
+    lightbox.focus();
+    if (CONFIG.lightboxFullscreen && lightbox.requestFullscreen) {
+      try { const result = lightbox.requestFullscreen(); if (result && result.catch) result.catch(() => {}); } catch (_) { /* widget overlay remains available */ }
+    }
+  }
+  function closeLightbox() {
+    if (!lightboxOpen) return;
+    lightboxOpen = false;
+    lightbox.hidden = true;
+    lightboxImage.removeAttribute('src');
+    if (document.fullscreenElement === lightbox && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+    resetTimer();
+  }
+  lightbox.addEventListener('click', closeLightbox);
+  lightbox.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') { e.preventDefault(); closeLightbox(); } });
+  document.addEventListener('fullscreenchange', () => { if (lightboxOpen && document.fullscreenElement !== lightbox) closeLightbox(); });
   $('prev').onclick=()=>move(-1);
   $('next').onclick=()=>move(1);
   $('pause').onclick=()=>{playing=!playing;pauseLabel();resetTimer();};
