@@ -30,6 +30,7 @@ const CONFIG = {
   enableSwipe: true,
   enableLightbox: true,       // click the current image to enlarge it
   lightboxFullscreen: true,   // try screen fullscreen; fall back to widget size
+  showLightboxArrows: true,   // previous/next in the enlarged view
   background: '#141922', // 'transparent' also works
   textColor: '#ffffff',
   accentColor: '#ffffff',
@@ -70,6 +71,9 @@ const CONFIG = {
   .lightbox { position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:#000e;cursor:zoom-out; }
   .lightbox img { display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain; }
   .lightbox:focus-visible { outline:2px solid var(--accent);outline-offset:-4px; }
+  .lightbox-arrow { position:absolute;top:50%;z-index:1;transform:translateY(-50%);width:44px;height:44px;background:#0009;color:#fff; }
+  .lightbox-arrow.prev { left:12px; }
+  .lightbox-arrow.next { right:12px; }
   [hidden] { display:none!important; }
 </style>
 </head>
@@ -86,8 +90,10 @@ const CONFIG = {
     <button id="next" aria-label="Næste billede">&#8250;</button>
   </div>
 </div>
-<div class="lightbox" id="lightbox" role="button" tabindex="0" aria-label="Luk stort billede" hidden>
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Stort billede" tabindex="-1" hidden>
+  <button class="lightbox-arrow prev" id="lightboxPrev" aria-label="Forrige billede">&#8249;</button>
   <img id="lightboxImage" alt="">
+  <button class="lightbox-arrow next" id="lightboxNext" aria-label="Næste billede">&#8250;</button>
 </div>
 <script>
 (() => {
@@ -167,6 +173,10 @@ const CONFIG = {
     if(mode3d)ring.style.transform=`rotateY(${-index*360/count}deg)`;
     $('counter').textContent=`${i+1} / ${count}`;
     $('caption').textContent=getCaption(images[i]);
+    if (lightboxOpen) {
+      lightboxImage.src=getURL(images[i]);
+      lightboxImage.alt=getCaption(images[i]) || `Billede ${i+1}`;
+    }
   }
   function canPlay() {return playing && !lightboxOpen && count>1 && CONFIG.intervalSeconds>0 && (!CONFIG.pauseWhenHidden || !document.hidden);}
   function resetTimer() {
@@ -174,6 +184,10 @@ const CONFIG = {
     if(canPlay()) timer=setInterval(()=>{index++;update();},CONFIG.intervalSeconds*1000);
   }
   function move(direction) {index+=direction;update();resetTimer();}
+  $('lightboxPrev').hidden = !CONFIG.showLightboxArrows || count<2;
+  $('lightboxNext').hidden = !CONFIG.showLightboxArrows || count<2;
+  $('lightboxPrev').onclick = e => { e.stopPropagation(); move(-1); };
+  $('lightboxNext').onclick = e => { e.stopPropagation(); move(1); };
   function openLightbox(img) {
     if (!CONFIG.enableLightbox || lightboxOpen || !img.naturalWidth) return;
     const box = img.getBoundingClientRect();
@@ -198,7 +212,10 @@ const CONFIG = {
     resetTimer();
   }
   lightbox.addEventListener('click', closeLightbox);
-  lightbox.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') { e.preventDefault(); closeLightbox(); } });
+  lightbox.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); move(e.key === 'ArrowLeft' ? -1 : 1); }
+    else if (e.key === 'Escape') { e.preventDefault(); closeLightbox(); }
+  });
   document.addEventListener('fullscreenchange', () => { if (lightboxOpen && document.fullscreenElement !== lightbox) closeLightbox(); });
   $('prev').onclick=()=>move(-1);
   $('next').onclick=()=>move(1);
