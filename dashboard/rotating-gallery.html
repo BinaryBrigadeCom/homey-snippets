@@ -10,12 +10,66 @@
    =========================================================== */
 const CONFIG = {
   images: [
-    { url: 'https://picsum.photos/seed/homey1/1200/800', caption: 'Billede 1' },
-    { url: 'https://picsum.photos/seed/homey2/1200/800', caption: 'Billede 2' },
-    { url: 'https://picsum.photos/seed/homey3/1200/800', caption: 'Billede 3' },
-    { url: 'https://picsum.photos/seed/homey4/1200/800', caption: 'Billede 4' },
-    { url: 'https://picsum.photos/seed/homey5/1200/800', caption: 'Billede 5' }
-  ],
+  // 1-10: Originale babyhvalpe og killinger
+  { url: 'https://picsum.photos', caption: 'Lille brun kaninunge i en håndflade' },
+  { url: 'https://picsum.photos', caption: 'Lyserød mikrogrugris på gulvtæppet' },
+  { url: 'https://picsum.photos', caption: 'To bløde ræveunger side om side' },
+  { url: 'https://picsum.photos', caption: 'Fennekræv med enorme nuttede ører' },
+  { url: 'https://picsum.photos', caption: 'Lille wombatjoey svøbt i et hyggeligt tæppe' },
+  { url: 'https://picsum.photos', caption: 'Siberian Husky hvalp i sofaen' },
+  { url: 'https://picsum.photos', caption: 'Nyfødt elefantunge der holder om sin mors ben' },
+  { url: 'https://picsum.photos', caption: 'Glad girafunge der løber på marken' },
+  { url: 'https://picsum.photos', caption: 'Lille pandaunge der sover på en gren' },
+  { url: 'https://picsum.photos', caption: 'Blød odderunge hvilende på sin mors mave' },
+
+  // 11-20: Små uldne bondegårdsdyr
+  { url: 'https://picsum.photos', caption: 'Lille hvidt lam der hopper på græsset' },
+  { url: 'https://picsum.photos', caption: 'Nuttet gedekid i en farverig striksweater' },
+  { url: 'https://picsum.photos', caption: 'Langhåret skotsk højlandskalv' },
+  { url: 'https://picsum.photos', caption: 'Nyklækket gul og dunet kylling' },
+  { url: 'https://picsum.photos', caption: 'Lille ælling der tager sit første svømmetag' },
+  { url: 'https://picsum.photos', caption: 'Langbenet føl der står tæt på sin mor' },
+  { url: 'https://picsum.photos', caption: 'Babyalpacapøs med store mørke øjne' },
+  { url: 'https://picsum.photos', caption: 'Fluffy lille æselhvalp på en eng' },
+  { url: 'https://picsum.photos', caption: 'Gylden retrieverhvalp der leger med en bold' },
+  { url: 'https://picsum.photos', caption: 'Spindende stribet killing i en kurv' },
+
+  // 21-30: Vilde skov- og savannedyr
+  { url: 'https://picsum.photos', caption: 'Lille løveunge der øver sit allerførste brøl' },
+  { url: 'https://picsum.photos', caption: 'Stribet tigerunge der leger i sneen' },
+  { url: 'https://picsum.photos', caption: 'Gepardunge med en blød, pjusket manke' },
+  { url: 'https://picsum.photos', caption: 'Prikket rådyrkalv der gemmer sig i skovbunden' },
+  { url: 'https://picsum.photos', caption: 'Lille brunbjørnunge der klatrer på en træstamme' },
+  { url: 'https://picsum.photos', caption: 'Baby-dovendyr der hænger omvendt på en gren' },
+  { url: 'https://picsum.photos', caption: 'Koalajungel der sidder solidt på sin mors ryg' },
+  { url: 'https://picsum.photos', caption: 'Mikroskopisk pindsvineunge rullet sammen til en kugle' },
+  { url: 'https://picsum.photos', caption: 'Lille stribet skunkunge i det grønne græs' },
+  { url: 'https://picsum.photos', caption: 'Vaskebjørneunge med den fineste lille maske om øjnene' },
+
+  // 31-40: Havets og polaregnenes små skabninger
+  { url: 'https://picsum.photos', caption: 'Hvid, blød sælunge der kigger direkte ind i kameraet' },
+  { url: 'https://picsum.photos', caption: 'Kejserpingvinunge i sin grå og dunede fjerdragt' },
+  { url: 'https://picsum.photos', caption: 'Isbjørneunge der tumler rundt i den hvide sne' },
+  { url: 'https://picsum.photos', caption: 'Babyflodhest der svømmer lige under vandoverfladen' },
+  { url: 'https://picsum.photos', caption: 'Lille pansret næsehornsunge i mudderbad' },
+  { url: 'https://picsum.photos', caption: 'Lille havskildpaddeunge på vej mod havet' },
+  { url: 'https://picsum.photos', caption: 'Delfinunge der svømmer synkront ved siden af sin mor' },
+  { url: 'https://picsum.photos', caption: 'En sjælden og utrolig lille næbdyrsunge' },
+  { url: 'https://picsum.photos', caption: 'Tyksak af en hvalrosunge på isen' },
+  { url: 'https://picsum.photos', caption: 'En enorm men nyfødt pukkelhvalskalv' },
+
+  // 41-50: Eksotiske og unikke små dyr
+  { url: 'https://picsum.photos', caption: 'Rød panda-unge med en stor stribet hale' },
+  { url: 'https://picsum.photos', caption: 'Lille surikatunge der står på bagbenene og holder udkig' },
+  { url: 'https://picsum.photos', caption: 'Ultre-blød chinchillaunge i en lille skål' },
+  { url: 'https://picsum.photos', caption: 'Korthovedet flyvepungegernunge med enorme øjne' },
+  { url: 'https://picsum.photos', caption: 'Ringhalelemur-unge der klamrer sig til mor' },
+  { url: 'https://picsum.photos', caption: 'Stribet og prikket tapirunge i skovbunden' },
+  { url: 'https://picsum.photos', caption: 'Kænguru-joey der kigger op fra pungen' },
+  { url: 'https://picsum.photos', caption: 'Lille pungrotteunge siddende på en gren' },
+  { url: 'https://picsum.photos', caption: 'Miniature flodsvin (kapivarunge) ved flodbredden' },
+  { url: 'https://picsum.photos', caption: 'Lille, smilende lyserød axolotl-baby i vandet' }
+ ],
   layout: 'slideshow',    // 'slideshow' (full image) or 'carousel3d'
   imageFit: 'cover',      // 'cover' (crop) or 'contain' (show full image)
   intervalSeconds: 5,    // 0 = disable automatic rotation
